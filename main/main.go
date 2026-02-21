@@ -12,17 +12,17 @@ import (
 )
 
 type model struct {
-	textArea  textarea.Model
-	textInput textinput.Model
-	files     []string
-	width     int
-	cursor    int
-	isEditing bool
-	height    int
+	textArea    textarea.Model
+	textInput   textinput.Model
+	files       []string
+	currentFile string
+	width       int
+	cursor      int
+	isEditing   bool
+	height      int
 }
 
 func initialModel() model {
-	// Inizializza SEMPRE una textarea base per evitare nil pointer
 
 	ta := textarea.New()
 	ta.Focus()
@@ -88,7 +88,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		//managing new file 
+		//managing new file
 		if m.textInput.Focused() {
 			switch msg.Type {
 			case tea.KeyEnter:
@@ -130,8 +130,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textArea.SetValue(string(content))
 					m.textArea.SetCursor(0)
 					m.textArea.Focus()
+					m.currentFile = nomeFile
 					m.isEditing = true
 				}
+
 			case tea.KeyBackspace.String():
 				os.Remove(m.files[m.cursor])
 				m.files = append(m.files[:m.cursor], m.files[m.cursor+1:]...)
@@ -142,9 +144,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// 4. LOGICA EDITOR (Solo se isEditing è true)
 		switch msg.Type {
-		case tea.KeyTab:
-			m.textArea.InsertString("    ")
+		case tea.KeyCtrlS:
+			val := m.textArea.Value()
+			str, err := functions.UpdateFile(m.currentFile, val)
+			if err != nil {
+				return nil, nil
+			}
+			m.textArea.SetValue(str)
 			return m, nil
+
+		case tea.KeyTab:
+			m.textArea.InsertString("  ")
+			return m, nil
+
 		case tea.KeyEscape:
 			m.isEditing = false
 			m.textArea.Blur()
@@ -180,14 +192,18 @@ func (m model) View() string {
 		)
 	}
 
-	// 2. Se NON siamo in editing, mostriamo la lista dei file
+	// Files list
 	s := "Select file\n\n"
 	for i, file := range m.files {
-		cursor := " "
+		// cursor := " "
 		if m.cursor == i {
-			cursor = ">"
+			s += selectedItemStyle.Render("> "+file) + "\n"
+
+			// s += normalItemStyle.Render(cursor)
+		} else {
+			s += fmt.Sprintf("%s\n", file)
 		}
-		s += fmt.Sprintf("%s %s\n", cursor, file)
+
 	}
 	s += "\n(`Enter` to open file, `ctrl+q` to quit, `n` to create a new file)"
 
