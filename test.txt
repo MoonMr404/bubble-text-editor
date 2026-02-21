@@ -1,5 +1,0 @@
-case ResultMsg:
-		m.choice = msg.Result
-		tea.ClearScreen()
-		return m, nil
-	}
