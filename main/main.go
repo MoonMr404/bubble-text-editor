@@ -99,6 +99,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case tea.KeyEsc:
 				m.textInput.Blur()
+
 				m.textInput.Reset()
 				return m, nil
 			}
@@ -130,6 +131,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textArea.SetValue(string(content))
 					m.textArea.SetCursor(0)
 					m.textArea.Focus()
+					//TODO set CTRL+S save
 					m.currentFile = nomeFile
 					m.isEditing = true
 				}
@@ -140,18 +142,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			return m, nil
+
 		}
 
 		// 4. LOGICA EDITOR (Solo se isEditing è true)
 		switch msg.Type {
+
 		case tea.KeyCtrlS:
 			val := m.textArea.Value()
 			str, err := functions.UpdateFile(m.currentFile, val)
 			if err != nil {
 				return nil, nil
 			}
+
+			//TODO fix setting
 			m.textArea.SetValue(str)
 			return m, nil
+
+		// case tea.KeyCtrlA:
+		// 	cont := m.textArea.Value()
+		// 	l := appStyle.Render(setTextToBold.Render(cont))
+		// 	m.textArea.SetValue(string(l))
+		// 	return m, nil
+
+		//delete line
+		case tea.KeyCtrlU:
+			//Rendering Bold text
+			m.textArea.Blur()
+			appStyle.Render(setTextToBold.Render(m.textArea.Value()))
+
+			// cont := m.textArea.Value()
+			// appStyle.Render(setTextToBold.Render(cont))
+			// m.textArea.SetValue(l)¨
 
 		case tea.KeyTab:
 			m.textArea.InsertString("  ")
@@ -159,8 +181,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyEscape:
 			m.isEditing = false
+			// _, err := functions.UpdateFile(m.currentFile, m.textArea.Value())
+			// if err != nil {
+			// 	return m, nil
+			// }
 			m.textArea.Blur()
 			return m, nil
+
 		}
 	}
 
@@ -170,6 +197,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	return m, cmd
 }
+
+// Views Managing
 func (m model) View() string {
 	if m.textInput.Focused() {
 		content := fmt.Sprintf(
@@ -179,12 +208,13 @@ func (m model) View() string {
 		)
 		return appStyle.Render(boxStyle.Render(content))
 	}
-	// 1. Se siamo in modalità editor, mostriamo la TextArea
+
+	// editor view
 	if m.isEditing {
 		content := fmt.Sprintf(
 			"Editing file...\n\n%s\n\n%s",
 			m.textArea.View(),
-			"(ctrl+q to quit, esc to go back)",
+			"(ctrl+q to quit, esc to go back, autosave(todo), ctrl+s to save)",
 		)
 
 		return appStyle.Render(
@@ -195,15 +225,11 @@ func (m model) View() string {
 	// Files list
 	s := "Select file\n\n"
 	for i, file := range m.files {
-		// cursor := " "
 		if m.cursor == i {
 			s += selectedItemStyle.Render("> "+file) + "\n"
-
-			// s += normalItemStyle.Render(cursor)
 		} else {
-			s += fmt.Sprintf("%s\n", file)
+			s += fmt.Sprintf("  %s\n", file)
 		}
-
 	}
 	s += "\n(`Enter` to open file, `ctrl+q` to quit, `n` to create a new file)"
 
