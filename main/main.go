@@ -14,43 +14,34 @@ import (
 type model struct {
 	textArea    textarea.Model
 	textInput   textinput.Model
+	footer      string
 	files       []string
 	currentFile string
 	width       int
+	height      int
 	cursor      int
 	isEditing   bool
-	height      int
 }
 
 func initialModel() model {
-
 	ta := textarea.New()
 	ta.Focus()
 	ta.ShowLineNumbers = true
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("#597db1"))
+	ta.FocusedStyle.CursorLineNumber = lipgloss.NewStyle().Foreground(lipgloss.Color("#6696d9")).Bold(true)
 
 	ti := textinput.New()
 	ti.Placeholder = "Nome del nuovo file..."
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().
-		Background(lipgloss.Color("#597db1"))
 
-	ta.FocusedStyle.CursorLineNumber = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6696d9")).
-		Bold(true)
-
+	// Caricamento file da argomenti
 	if len(os.Args) > 1 {
 		fn := os.Args[1]
 		content, _ := os.ReadFile(fn)
 		ta.SetValue(string(content))
-		ta.Focus()
-
-		return model{
-			textArea:  ta,
-			textInput: ti,
-			isEditing: true,
-		}
+		return model{textArea: ta, textInput: ti, isEditing: true, currentFile: fn}
 	}
 
-	// Modalità lista
+	// Caricamento lista file
 	files, _ := os.ReadDir(".")
 	var fileList []string
 	for _, f := range files {
@@ -59,12 +50,7 @@ func initialModel() model {
 		}
 	}
 
-	return model{
-		textArea:  ta,
-		textInput: ti,
-		files:     fileList,
-		isEditing: false,
-	}
+	return model{textArea: ta, textInput: ti, files: fileList, isEditing: false}
 }
 
 func (m model) Init() tea.Cmd {
@@ -78,17 +64,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		m.textArea.SetWidth(m.width - 4)
-		m.textArea.SetHeight(m.height - 6)
 		return m, nil
 
 	case tea.KeyMsg:
-		// 1. TASTI GLOBALI
 		if msg.Type == tea.KeyCtrlQ {
 			return m, tea.Quit
 		}
 
-		//managing new file
+		// Gestione Input Nuovo File
 		if m.textInput.Focused() {
 			switch msg.Type {
 			case tea.KeyEnter:
@@ -99,16 +82,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case tea.KeyEsc:
 				m.textInput.Blur()
-
 				m.textInput.Reset()
 				return m, nil
 			}
-			// Aggiorna l'input mentre scrivi
 			m.textInput, cmd = m.textInput.Update(msg)
 			return m, cmd
 		}
 
-		//List logic
+		// Gestione Lista File
 		if !m.isEditing {
 			switch msg.String() {
 			case "up", "k":
@@ -119,110 +100,83 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor < len(m.files)-1 {
 					m.cursor++
 				}
-			//create new file
 			case "n":
 				return m, m.textInput.Focus()
-
-			//open editor
 			case "enter":
 				if len(m.files) > 0 {
 					nomeFile := m.files[m.cursor]
 					content, _ := os.ReadFile(nomeFile)
 					m.textArea.SetValue(string(content))
 					m.textArea.SetCursor(0)
-					m.textArea.Focus()
-					//TODO set CTRL+S save
 					m.currentFile = nomeFile
 					m.isEditing = true
+					m.textArea.Focus()
 				}
-
 			case tea.KeyBackspace.String():
 				os.Remove(m.files[m.cursor])
 				m.files = append(m.files[:m.cursor], m.files[m.cursor+1:]...)
 				return m, nil
 			}
 			return m, nil
-
 		}
 
-		// 4. LOGICA EDITOR (Solo se isEditing è true)
+		// Gestione Editor
 		switch msg.Type {
+		//Save commands
 
 		case tea.KeyCtrlS:
 			val := m.textArea.Value()
-			str, err := functions.UpdateFile(m.currentFile, val)
-			if err != nil {
-				return nil, nil
-			}
 
-			//TODO fix setting
-			m.textArea.SetValue(str)
+			functions.UpdateFile(m.currentFile, val)
+			// m.footer = "Saved successfully"
+			// m.textArea.SetValue("Saved successfully")
 			return m, nil
-
-		// case tea.KeyCtrlA:
-		// 	cont := m.textArea.Value()
-		// 	l := appStyle.Render(setTextToBold.Render(cont))
-		// 	m.textArea.SetValue(string(l))
-		// 	return m, nil
-
-		//delete line
-		case tea.KeyCtrlU:
-			//Rendering Bold text
-			m.textArea.Blur()
-			appStyle.Render(setTextToBold.Render(m.textArea.Value()))
-
-			// cont := m.textArea.Value()
-			// appStyle.Render(setTextToBold.Render(cont))
-			// m.textArea.SetValue(l)¨
-
 		case tea.KeyTab:
 			m.textArea.InsertString("  ")
 			return m, nil
-
-		case tea.KeyEscape:
+		case tea.KeyEsc:
 			m.isEditing = false
-			// _, err := functions.UpdateFile(m.currentFile, m.textArea.Value())
-			// if err != nil {
-			// 	return m, nil
-			// }
 			m.textArea.Blur()
 			return m, nil
-
 		}
 	}
 
-	// Aggiorna la textarea se siamo in editing
 	if m.isEditing {
 		m.textArea, cmd = m.textArea.Update(msg)
 	}
 	return m, cmd
 }
 
-// Views Managing
 func (m model) View() string {
+	// 1. Vista Input Nome File
 	if m.textInput.Focused() {
-		content := fmt.Sprintf(
-			"Crea Nuovo File\n\n%s\n\n%s",
-			m.textInput.View(),
-			"(enter per confermare, esc per annullare)",
-		)
+		content := fmt.Sprintf("Crea Nuovo File\n\n%s\n\n(enter: conferma, esc: annulla)", m.textInput.View())
 		return appStyle.Render(boxStyle.Render(content))
 	}
 
-	// editor view
+	// 2. Vista Editor Split-Screen
 	if m.isEditing {
-		content := fmt.Sprintf(
-			"Editing file...\n\n%s\n\n%s",
-			m.textArea.View(),
-			"(ctrl+q to quit, esc to go back, autosave(todo), ctrl+s to save)",
-		)
+		// Calcolo larghezze per le due colonne
+		halfWidth := (m.width / 2) - 6
+		m.textArea.SetWidth(halfWidth)
+		m.textArea.SetHeight(m.height - 12)
 
-		return appStyle.Render(
-			boxStyle.Render(content),
-		)
+		// Colonna Sinistra (Editor)
+		leftView := normalItemStyle.Width(halfWidth).Render(m.textArea.View())
+
+		// Colonna Destra (Anteprima Bold)
+		rightView := setTextToBold.Width(halfWidth).Render(setTextToBold.Render(m.textArea.Value()))
+
+		// Unione orizzontale
+		mainContent := lipgloss.JoinHorizontal(lipgloss.Top, leftView, rightView)
+
+		header := fmt.Sprintf("Editing: %s\n\n", m.currentFile)
+		m.footer = "\n\n(esc: back | ctrl+s: save | ctrl+q: quit)"
+
+		return appStyle.Render(boxStyle.Render(header + mainContent + m.footer))
 	}
 
-	// Files list
+	// 3. Vista Lista File
 	s := "Select file\n\n"
 	for i, file := range m.files {
 		if m.cursor == i {
@@ -231,19 +185,13 @@ func (m model) View() string {
 			s += fmt.Sprintf("  %s\n", file)
 		}
 	}
-	s += "\n(`Enter` to open file, `ctrl+q` to quit, `n` to create a new file)"
+	s += "\n(enter: open | n: new file | backspace: delete | ctrl+q: quit)"
 
-	return appStyle.Render(
-		boxStyle.Render(s),
-	)
+	return appStyle.Render(boxStyle.Render(s))
 }
 
 func main() {
-	p := tea.NewProgram(
-		initialModel(),
-		tea.WithAltScreen(),
-	)
-
+	p := tea.NewProgram(initialModel(), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Errore: %v", err)
 		os.Exit(1)

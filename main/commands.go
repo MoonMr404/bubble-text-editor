@@ -19,7 +19,11 @@ func EditFile(filename string) tea.Cmd {
 	//open text editor
 	return func() tea.Msg {
 		res, err := functions.ReadFile((filename))
-		
+
 		return ResultMsg{Result: res, Err: err}
 	}
+}
+
+func RenderMarkdown(input string) string {
+	return setTextToBold.Render(input)
 }

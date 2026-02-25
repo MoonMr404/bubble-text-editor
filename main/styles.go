@@ -25,5 +25,8 @@ var (
 	normalItemStyle = lipgloss.NewStyle().
 			PaddingLeft(1)
 
-	setTextToBold = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#ff0000"))
+	setTextToBold = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#ffffff"))
+
+	setBorderToBox = lipgloss.NewStyle().Border(lipgloss.ThickBorder(), true, false)
+	// columnLeftStyle
 )
