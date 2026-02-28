@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// TODO UPDATE ("/Users/user/Desktop/Appunti/"+filename in CWD
 // ReadFile reads the contents of a file and returns it as a string
 func ReadFile(filename string) (string, error) {
 	data, err := os.ReadFile(filename)
@@ -15,7 +16,8 @@ func ReadFile(filename string) (string, error) {
 }
 
 func CreateNewFile(filename string) string {
-	err := os.WriteFile(filename, nil, 0644)
+
+	err := os.WriteFile("/Users/francesco/Desktop/Appunti/"+filename, nil, 0644)
 	if err != nil {
 		fmt.Errorf("error writing file: %w", err)
 	}
@@ -29,4 +31,8 @@ func UpdateFile(filename string, content string) (string, error) {
 		return "", err
 	}
 	return "Saved successfully", nil
+}
+
+func CompileMarkdown(currentFile string) {
+
 }

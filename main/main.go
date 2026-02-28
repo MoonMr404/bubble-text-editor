@@ -42,12 +42,14 @@ func initialModel() model {
 	}
 
 	// Caricamento lista file
-	files, _ := os.ReadDir(".")
+	files, _ := os.ReadDir("/Users/francesco/Desktop/Appunti/")
 	var fileList []string
+	
 	for _, f := range files {
 		if !f.IsDir() {
 			fileList = append(fileList, f.Name())
 		}
+		
 	}
 
 	return model{textArea: ta, textInput: ti, files: fileList, isEditing: false}
@@ -126,7 +128,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case tea.KeyCtrlS:
 			val := m.textArea.Value()
-
 			functions.UpdateFile(m.currentFile, val)
 			// m.footer = "Saved successfully"
 			// m.textArea.SetValue("Saved successfully")
@@ -165,7 +166,7 @@ func (m model) View() string {
 		leftView := normalItemStyle.Width(halfWidth).Render(m.textArea.View())
 
 		// Colonna Destra (Anteprima Bold)
-		rightView := setTextToBold.Width(halfWidth).Render(setTextToBold.Render(m.textArea.Value()))
+		rightView := setTextToBold.Width(halfWidth).Render()
 
 		// Unione orizzontale
 		mainContent := lipgloss.JoinHorizontal(lipgloss.Top, leftView, rightView)

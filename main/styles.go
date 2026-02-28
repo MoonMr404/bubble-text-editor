@@ -22,8 +22,7 @@ var (
 				Bold(true).
 				PaddingLeft(1)
 
-	normalItemStyle = lipgloss.NewStyle().
-			PaddingLeft(1)
+	normalItemStyle = lipgloss.NewStyle()
 
 	setTextToBold = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#ffffff"))
 
