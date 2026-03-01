@@ -11,6 +11,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// CREATE DISTINCT VIEWS
+// Nested Struct>
+type editingView struct {
+	editingArea textarea.Model
+	content     string
+	//undoStack
+}
 type model struct {
 	textArea    textarea.Model
 	textInput   textinput.Model
@@ -27,9 +34,13 @@ func initialModel() model {
 	ta := textarea.New()
 	ta.Focus()
 	ta.ShowLineNumbers = true
-	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("#597db1"))
-	ta.FocusedStyle.CursorLineNumber = lipgloss.NewStyle().Foreground(lipgloss.Color("#6696d9")).Bold(true)
 
+	// editing cursor style
+
+	// needs to be dynamic
+	ta.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("#087249"))
+	ta.FocusedStyle.CursorLineNumber = lipgloss.NewStyle().Foreground(lipgloss.Color("#ffffff")).Bold(true)
+	
 	ti := textinput.New()
 	ti.Placeholder = "Nome del nuovo file..."
 
@@ -42,14 +53,15 @@ func initialModel() model {
 	}
 
 	// Caricamento lista file
-	files, _ := os.ReadDir("/Users/francesco/Desktop/Appunti/")
+	files, _ := os.ReadDir("C:\\Users\\Francesco\\Desktop\\Appunti\\") //Win vers
+	// files, _ := os.ReadDir("/Users/francesco/Desktop/Appunti/") macos vers
 	var fileList []string
-	
+
 	for _, f := range files {
 		if !f.IsDir() {
 			fileList = append(fileList, f.Name())
 		}
-		
+
 	}
 
 	return model{textArea: ta, textInput: ti, files: fileList, isEditing: false}
@@ -115,6 +127,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.textArea.Focus()
 				}
 			case tea.KeyBackspace.String():
+				//TODO fix file removing in other folders
 				os.Remove(m.files[m.cursor])
 				m.files = append(m.files[:m.cursor], m.files[m.cursor+1:]...)
 				return m, nil
@@ -149,32 +162,46 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	// 1. Vista Input Nome File
+	//New file managing
 	if m.textInput.Focused() {
-		content := fmt.Sprintf("Crea Nuovo File\n\n%s\n\n(enter: conferma, esc: annulla)", m.textInput.View())
+		content := fmt.Sprintf("Create new file\n\n%s\n\n(enter: confirm, esc: cancel)", m.textInput.View())
 		return appStyle.Render(boxStyle.Render(content))
 	}
 
-	// 2. Vista Editor Split-Screen
+	//Editing file UI
 	if m.isEditing {
-		// Calcolo larghezze per le due colonne
-		halfWidth := (m.width / 2) - 6
+
+		halfWidth := (m.width / 2) - 4
 		m.textArea.SetWidth(halfWidth)
-		m.textArea.SetHeight(m.height - 12)
+		m.textArea.SetHeight(m.height - 15)
+		// Stile di sfondo comune
+		bgStyle := lipgloss.NewStyle().Background(lipgloss.Color("#087249"))
 
-		// Colonna Sinistra (Editor)
-		leftView := normalItemStyle.Width(halfWidth).Render(m.textArea.View())
+		// leftView := normalItemStyle.Width(halfWidth).Height(m.height - 10).Render(m.textArea.View())
 
-		// Colonna Destra (Anteprima Bold)
-		rightView := setTextToBold.Width(halfWidth).Render()
+		//Define style in styles.go
+		// Rendering cursor?
+
+		leftView := normalItemStyle.
+			Width((m.width / 2) - 4).
+			Height(m.height - 10).
+			Padding(2).
+			Render(m.textArea.View())
+
+		// pass leftVew buffer for rendering?
+		rightView := bgStyle.Bold(true).Width(halfWidth).Height(m.height - 10).Padding(2).Render(m.textArea.Value())
 
 		// Unione orizzontale
-		mainContent := lipgloss.JoinHorizontal(lipgloss.Top, leftView, rightView)
+		joinedViews := lipgloss.JoinHorizontal(lipgloss.Top, leftView, rightView)
+
+		mainContent := bgStyle.Width(m.width - 4).Render(joinedViews)
 
 		header := fmt.Sprintf("Editing: %s\n\n", m.currentFile)
-		m.footer = "\n\n(esc: back | ctrl+s: save | ctrl+q: quit)"
+		footer := "\n\n(esc: back | ctrl+s: save | ctrl+q: quit)"
+		//Footer style
+		footer = lipgloss.NewStyle().Background(lipgloss.Color("#707208")).Width(m.width).Height(5).Render(footer)
 
-		return appStyle.Render(boxStyle.Render(header + mainContent + m.footer))
+		return appStyle.Render(boxStyle.Render(header + mainContent + footer))
 	}
 
 	// 3. Vista Lista File

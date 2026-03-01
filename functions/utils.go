@@ -16,8 +16,9 @@ func ReadFile(filename string) (string, error) {
 }
 
 func CreateNewFile(filename string) string {
-
-	err := os.WriteFile("/Users/francesco/Desktop/Appunti/"+filename, nil, 0644)
+	//TODO fix empty name area
+	//TODO auto create folder
+	err := os.WriteFile("C:\\Users\\Francesco\\Desktop\\Appunti\\"+filename, nil, 0644)
 	if err != nil {
 		fmt.Errorf("error writing file: %w", err)
 	}
